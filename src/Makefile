@@ -575,6 +575,7 @@ raygui.o : raygui.c raygui.h gui_textbox_extended.h ricons.h
 	$(CC) -c $< $(CFLAGS) $(INCLUDE_PATHS) -D$(PLATFORM) -DRAYGUI_IMPLEMENTATION
 raygui.c:
 	echo '#define RAYGUI_IMPLEMENTATION' > raygui.c
+	echo '#define RAYGUI_SUPPORT_ICONS' >> raygui.c
 	echo '#include "$(RAYLIB_MODULE_RAYGUI_PATH)/raygui.h"' >> raygui.c
 
 # Compile physac module
