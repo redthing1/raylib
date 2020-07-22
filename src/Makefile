@@ -581,9 +581,11 @@ raygui.c:
 # Compile physac module
 # NOTE: physac header should be distributed with raylib.h
 physac.o : physac.c physac.h
-	@echo #define PHYSAC_IMPLEMENTATION > physac.c
-	@echo #include "$(RAYLIB_MODULE_PHYSAC_PATH)/physac.h" > physac.c
 	$(CC) -c $< $(CFLAGS) $(INCLUDE_PATHS) -D$(PLATFORM) -DPHYSAC_IMPLEMENTATION
+physac.c:
+	@echo '#define PHYSAC_IMPLEMENTATION' > physac.c
+	@echo '#include "raylib.h"' >> physac.c
+	@echo '#include "$(RAYLIB_MODULE_PHYSAC_PATH)/physac.h"' >> physac.c
 
 
 # Install generated and needed files to desired directories.
