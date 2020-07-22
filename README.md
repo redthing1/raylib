@@ -1,3 +1,18 @@
+# this fork
+
+changes:
++ `raygui` built-in
++ `physac` built-in
+
+build
+```
+git submodule update --init --recursive
+cd src/
+make PLATFORM=PLATFORM_DESKTOP RAYLIB_LIBTYPE=SHARED RAYLIB_MODULE_RAYGUI=TRUE RAYLIB_MODULE_PHYSAC=TRUE -j$(nproc)
+# install (optional)
+sudo make install PLATFORM=PLATFORM_DESKTOP RAYLIB_LIBTYPE=SHARED RAYLIB_MODULE_RAYGUI=TRUE RAYLIB_MODULE_PHYSAC=TRUE
+```
+
 <img align="left" src="https://github.com/raysan5/raylib/blob/master/logo/raylib_256x256.png" width=256>
 
 **raylib is a simple and easy-to-use library to enjoy videogames programming.**
