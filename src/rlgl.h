@@ -547,7 +547,7 @@ RLAPI void rlUnloadMesh(Mesh mesh);                                       // Unl
 // NOTE: This functions are useless when using OpenGL 1.1
 //------------------------------------------------------------------------------------
 // Shader loading/unloading functions
-RLAPI Shader LoadShader(char *vsFileName, char *fsFileName);  // Load shader from files and bind default locations
+RLAPI Shader LoadShader(char *vsFileName, char *fsFileName, char* arg3);  // Load shader from files and bind default locations
 RLAPI Shader LoadShaderCode(char *vsCode, char *fsCode);      // Load shader from code strings and bind default locations
 RLAPI void UnloadShader(Shader shader);                                   // Unload shader from GPU memory (VRAM)
 
@@ -2988,10 +2988,10 @@ Shader GetShaderDefault(void)
 
 // Load shader from files and bind default locations
 // NOTE: If shader string is NULL, using default vertex/fragment shaders
-Shader LoadShader(char *vsFileName, char *fsFileName)
+Shader LoadShader(char *vsFileName, char *fsFileName, char *arg3)
 {
     // detect beans
-    printf("BEAN DETECTOR: %s, %s\n", vsFileName, fsFileName);
+    printf("BEAN DETECTOR: %s, %s, %s\n", vsFileName, fsFileName, arg3);
 
     Shader shader = { 0 };
 
@@ -3008,6 +3008,60 @@ Shader LoadShader(char *vsFileName, char *fsFileName)
     if (vShaderStr != NULL) RL_FREE(vShaderStr);
     if (fShaderStr != NULL) RL_FREE(fShaderStr);
 
+    return shader;
+}
+
+// Loande shander
+Shader LoandeShander(char *vsFileName, char *fsFileName)
+{
+    // detect beans
+    printf("LOANDING SHANDER DETECTOR: %s, %s\n", vsFileName, fsFileName);
+
+    Shader shader = { 0 };
+
+    // NOTE: Shader.locs is allocated by LoadShaderCode()
+
+    char *vShaderStr = NULL;
+    char *fShaderStr = NULL;
+
+    if (vsFileName != NULL) vShaderStr = LoadFileText(vsFileName);
+    if (fsFileName != NULL) fShaderStr = LoadFileText(fsFileName);
+
+    shader = LoadShaderCode(vShaderStr, fShaderStr);
+
+    if (vShaderStr != NULL) RL_FREE(vShaderStr);
+    if (fShaderStr != NULL) RL_FREE(fShaderStr);
+
+    return shader;
+}
+        
+Shader DetectBeans(char* arg1, char* arg2, char* arg3) {
+    printf("D E T E C C: %s %s %s\n", arg1, arg2, arg3);
+    Shader shader = { 0 };
+    return shader;
+}
+
+Shader DetectBeans2(char* arg1, char* arg2) {
+    printf("D E T E C C: %s %s\n", arg1, arg2);
+    Shader shader = { 0 };
+    return shader;
+}
+
+Shader DetectBeans1(char* arg1) {
+    printf("D E T E C C: %s\n", arg1);
+    Shader shader = { 0 };
+    return shader;
+}
+
+void DetectBeans1V(char* arg1) {
+    printf("D E T E C C: %s\n", arg1);
+    Shader shader = { 0 };
+    return shader;
+}
+
+void DetectBeans2V(char* arg1, char* arg2) {
+    printf("D E T E C C: %s %s\n", arg1, arg2);
+    Shader shader = { 0 };
     return shader;
 }
 

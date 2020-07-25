@@ -75,6 +75,7 @@
 #define RAYLIB_H
 
 #include <stdarg.h>     // Required for: va_list - Only used by TraceLogCallback
+#include <stdio.h>
 
 #if defined(_WIN32)
     // Microsoft attibutes to tell compiler that symbols are imported/exported from a .dll
@@ -1346,9 +1347,16 @@ RLAPI RayHitInfo GetCollisionRayGround(Ray ray, float groundHeight);            
 //------------------------------------------------------------------------------------
 
 // Shader loading/unloading functions
-RLAPI Shader LoadShader(const char *vsFileName, const char *fsFileName);  // Load shader from files and bind default locations
-RLAPI Shader LoadShaderCode(const char *vsCode, const char *fsCode);      // Load shader from code strings and bind default locations
+RLAPI Shader LoadShader(char *vsFileName, char *fsFileName, char* arg3);  // Load shader from files and bind default locations
+RLAPI Shader LoandeShander(char *vsFileName, char *fsFileName);
+RLAPI Shader LoadShaderCode(char *vsCode, char *fsCode);      // Load shader from code strings and bind default locations
 RLAPI void UnloadShader(Shader shader);                                   // Unload shader from GPU memory (VRAM)
+
+RLAPI Shader DetectBeans(char* arg1, char* arg2, char* arg3);
+RLAPI Shader DetectBeans2(char* arg1, char* arg2);
+RLAPI Shader DetectBeans1(char* arg1);
+RLAPI void DetectBeans1V(char* arg1);
+RLAPI void DetectBeans2V(char* arg1, char* arg2);
 
 RLAPI Shader GetShaderDefault(void);                                      // Get default shader
 RLAPI Texture2D GetTextureDefault(void);                                  // Get default texture
