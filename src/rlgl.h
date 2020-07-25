@@ -547,8 +547,8 @@ RLAPI void rlUnloadMesh(Mesh mesh);                                       // Unl
 // NOTE: This functions are useless when using OpenGL 1.1
 //------------------------------------------------------------------------------------
 // Shader loading/unloading functions
-RLAPI Shader LoadShader(const char *vsFileName, const char *fsFileName);  // Load shader from files and bind default locations
-RLAPI Shader LoadShaderCode(const char *vsCode, const char *fsCode);      // Load shader from code strings and bind default locations
+RLAPI Shader LoadShader(char *vsFileName, char *fsFileName);  // Load shader from files and bind default locations
+RLAPI Shader LoadShaderCode(char *vsCode, char *fsCode);      // Load shader from code strings and bind default locations
 RLAPI void UnloadShader(Shader shader);                                   // Unload shader from GPU memory (VRAM)
 
 RLAPI Shader GetShaderDefault(void);                                      // Get default shader
@@ -3013,8 +3013,11 @@ Shader LoadShader(char *vsFileName, char *fsFileName)
 
 // Load shader from code strings
 // NOTE: If shader string is NULL, using default vertex/fragment shaders
-Shader LoadShaderCode(const char *vsCode, const char *fsCode)
+Shader LoadShaderCode(char *vsCode, char *fsCode)
 {
+    // detect beans
+    printf("BEAN DETECTOR: %s, %s\n", vsCode, fsCode);
+
     Shader shader = { 0 };
     shader.locs = (int *)RL_CALLOC(MAX_SHADER_LOCATIONS, sizeof(int));
 
