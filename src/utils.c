@@ -263,7 +263,7 @@ char *LoadFileText(const char *fileName)
 
             fclose(textFile);
         }
-        else TRACELOG(LOG_WARNING, "FILEIO: [%s] Failed to open text file", fileName);
+        else TRACELOG(LOG_WARNING, "(lft) FILEIO: [%s] Failed to open text file", fileName);
     }
     else TRACELOG(LOG_WARNING, "FILEIO: File name provided is not valid");
 
@@ -286,7 +286,7 @@ void SaveFileText(const char *fileName, char *text)
 
             fclose(file);
         }
-        else TRACELOG(LOG_WARNING, "FILEIO: [%s] Failed to open text file", fileName);
+        else TRACELOG(LOG_WARNING, "(sft) FILEIO: [%s] Failed to open text file", fileName);
     }
     else TRACELOG(LOG_WARNING, "FILEIO: File name provided is not valid");
 }

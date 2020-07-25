@@ -57,6 +57,7 @@
 *     3. This notice may not be removed or altered from any source distribution.
 *
 **********************************************************************************************/
+#include <stdio.h>
 
 #ifndef RLGL_H
 #define RLGL_H
@@ -2987,8 +2988,11 @@ Shader GetShaderDefault(void)
 
 // Load shader from files and bind default locations
 // NOTE: If shader string is NULL, using default vertex/fragment shaders
-Shader LoadShader(const char *vsFileName, const char *fsFileName)
+Shader LoadShader(char *vsFileName, char *fsFileName)
 {
+    // detect beans
+    printf("BEAN DETECTOR: %s, %s\n", vsFileName, fsFileName);
+
     Shader shader = { 0 };
 
     // NOTE: Shader.locs is allocated by LoadShaderCode()
@@ -4639,7 +4643,7 @@ char *LoadFileText(const char *fileName)
 
             fclose(textFile);
         }
-        else TRACELOG(LOG_WARNING, "FILEIO: [%s] Failed to open text file", fileName);
+        else TRACELOG(LOG_WARNING, "(RLGL) FILEIO: [%s] Failed to open text file", fileName);
     }
     else TRACELOG(LOG_WARNING, "FILEIO: File name provided is not valid");
 
