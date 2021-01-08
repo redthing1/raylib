@@ -99,6 +99,9 @@
 #endif
 
 #include "raymath.h"            // Required for: Vector3, Matrix
+#define bool openvr_bool
+#include <openvr_capi.h>
+#undef bool
 
 // Security check in case no GRAPHICS_API_OPENGL_* defined
 #if !defined(GRAPHICS_API_OPENGL_11) && \
@@ -843,11 +846,13 @@ typedef struct RenderBatch {
 #if defined(SUPPORT_VR_SIMULATOR)
 // VR Stereo rendering configuration for simulator
 typedef struct VrStereoConfig {
-    Shader distortionShader;        // VR stereo rendering distortion shader
+    // Shader distortionShader;        // VR stereo rendering distortion shader
     Matrix eyesProjection[2];       // VR stereo rendering eyes projection matrices
     Matrix eyesViewOffset[2];       // VR stereo rendering eyes view offset matrices
     int eyeViewportRight[4];        // VR stereo rendering right eye viewport [x, y, w, h]
     int eyeViewportLeft[4];         // VR stereo rendering left eye viewport [x, y, w, h]
+    uint32_t renderTargetWidth;
+    uint32_t renderTargetHeight;
 } VrStereoConfig;
 #endif
 
@@ -904,11 +909,17 @@ typedef struct rlglData {
     } ExtSupported;     // Extensions supported flags
 #if defined(SUPPORT_VR_SIMULATOR)
     struct {
+        struct VR_IVRSystem_FnTable *hmd;
+        struct VR_IVRCompositor_FnTable *compositor;
         VrStereoConfig config;              // VR stereo configuration for simulator
         unsigned int stereoFboId;           // VR stereo rendering framebuffer id
         unsigned int stereoTexId;           // VR stereo color texture (attached to framebuffer)
         bool simulatorReady;                // VR simulator ready flag
         bool stereoRender;                  // VR stereo rendering enabled/disabled flag
+        Matrix hmdTf;
+        TrackedDevicePose_t trackedPoses[64];
+        Texture_t ovrTexture;
+        VRTextureBounds_t leftBounds, rightBounds;
     } Vr;
 #endif  // SUPPORT_VR_SIMULATOR
 } rlglData;
@@ -3798,24 +3809,140 @@ void EndBlendMode(void)
 }
 
 #if defined(SUPPORT_VR_SIMULATOR)
+
+extern intptr_t VR_InitInternal(EVRInitError *peError, EVRApplicationType eType);
+extern void VR_ShutdownInternal();
+extern bool VR_IsHmdPresent();
+extern intptr_t VR_GetGenericInterface(const char *pchInterfaceVersion, EVRInitError *peError);
+extern bool VR_IsRuntimeInstalled();
+extern const char *VR_GetVRInitErrorAsSymbol(EVRInitError error);
+extern const char *VR_GetVRInitErrorAsEnglishDescription(EVRInitError error);
+
+static intptr_t GetOpenVrTable(const char *name) {
+    static char tableName[128];
+    static EVRInitError err;
+
+    sprintf(tableName, "FnTable:%s", name);
+    intptr_t result = VR_GetGenericInterface(tableName, &err);
+
+    if (err != EVRInitError_VRInitError_None) {
+        TraceLog(LOG_FATAL, "Failed to get function table %s from OpenVR (%s): %s", name,
+                 VR_GetVRInitErrorAsSymbol(err), VR_GetVRInitErrorAsEnglishDescription(err));
+    }
+
+    return result;
+}
+
+// Converts a 4x4 OpenVR matrix (HmdMatrix44_t) to a 4x4 Raylib matrix (Matrix)
+Matrix OpenVr44ToRaylib44Matrix(HmdMatrix44_t mat) {
+    return (Matrix) {
+            mat.m[0][0], mat.m[0][1], mat.m[0][2], mat.m[0][3],
+            mat.m[1][0], mat.m[1][1], mat.m[1][2], mat.m[1][3],
+            mat.m[2][0], mat.m[2][1], mat.m[2][2], mat.m[2][3],
+            mat.m[3][0], mat.m[3][1], mat.m[3][2], mat.m[3][3],
+    };
+}
+
+// Converts a 3x4 OpenVR matrix (HmdMatrix34_t) to a 4x4 Raylib matrix, filling the remaining column with
+// <0, 0, 0, 1>.
+Matrix OpenVr34ToRaylib44Matrix(HmdMatrix34_t mat) {
+    return (Matrix) {
+            mat.m[0][0], mat.m[0][1], mat.m[0][2], mat.m[0][3],
+            mat.m[1][0], mat.m[1][1], mat.m[1][2], mat.m[1][3],
+            mat.m[2][0], mat.m[2][1], mat.m[2][2], mat.m[2][3],
+            0.0f, 0.0f, 0.0f, 1.0f,
+    };
+}
+
 // Init VR simulator for selected device parameters
 // NOTE: It modifies the global variable: RLGL.Vr.stereoFboId
-void InitVrSimulator(void)
+void InitVrSimulator()
 {
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
-    // Initialize framebuffer and textures for stereo rendering
-    // NOTE: Screen size should match HMD aspect ratio
-    RLGL.Vr.stereoFboId = rlLoadFramebuffer(RLGL.State.framebufferWidth, RLGL.State.framebufferHeight);
+    TraceLog(LOG_INFO, "OPENVR: Initializing OpenVR");
+
+    if (!VR_IsRuntimeInstalled()) {
+        TraceLog(LOG_ERROR, "OPENVR: No OpenVR runtime installed");
+        return;
+    }
+
+    if (!VR_IsHmdPresent()) {
+        TraceLog(LOG_WARNING, "OPENVR: No HMD present");
+        return;
+    }
+
+    EVRInitError err;
+    VR_InitInternal(&err, EVRApplicationType_VRApplication_Scene);
+    if (err != EVRInitError_VRInitError_None) {
+        TraceLog(LOG_FATAL, "OPENVR: Failed to initialize runtime: %s", VR_GetVRInitErrorAsEnglishDescription(err));
+    }
+
+    RLGL.Vr.hmd = (struct VR_IVRSystem_FnTable *) GetOpenVrTable(IVRSystem_Version);
+    RLGL.Vr.compositor = (struct VR_IVRCompositor_FnTable *) GetOpenVrTable(IVRCompositor_Version);
+
+    memset(&RLGL.Vr.config, 0, sizeof(RLGL.Vr.config));
+
+    // NOTE: OpenVR gives us the size of *one* eye
+    RLGL.Vr.hmd->GetRecommendedRenderTargetSize(&RLGL.Vr.config.renderTargetWidth, &RLGL.Vr.config.renderTargetHeight);
+
+    uint32_t fbWidth = 2 * RLGL.Vr.config.renderTargetWidth;
+    uint32_t fbHeight = RLGL.Vr.config.renderTargetHeight;
+    RLGL.Vr.stereoFboId = rlLoadFramebuffer(fbWidth, fbHeight);
 
     // Load color/depth textures to attach to framebuffer
-    RLGL.Vr.stereoTexId = rlLoadTexture(NULL, RLGL.State.framebufferWidth, RLGL.State.framebufferHeight, UNCOMPRESSED_R8G8B8A8, 1);
-    unsigned int depthId = rlLoadTextureDepth(RLGL.State.framebufferWidth, RLGL.State.framebufferHeight, true);
+    RLGL.Vr.stereoTexId = rlLoadTexture(NULL, fbWidth, fbHeight, UNCOMPRESSED_R8G8B8A8, 1);
+    uint32_t depthId = rlLoadTextureDepth(fbWidth, fbHeight, true);
 
     // Attach color texture and depth renderbuffer/texture to FBO
     rlFramebufferAttach(RLGL.Vr.stereoFboId, RLGL.Vr.stereoTexId, RL_ATTACHMENT_COLOR_CHANNEL0, RL_ATTACHMENT_TEXTURE2D);
     rlFramebufferAttach(RLGL.Vr.stereoFboId, depthId, RL_ATTACHMENT_DEPTH, RL_ATTACHMENT_RENDERBUFFER);
 
+    RLGL.Vr.config.eyesProjection[0] = OpenVr44ToRaylib44Matrix(
+        RLGL.Vr.hmd->GetProjectionMatrix(EVREye_Eye_Left, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR)
+    );
+
+    RLGL.Vr.config.eyesProjection[1] = OpenVr44ToRaylib44Matrix(
+        RLGL.Vr.hmd->GetProjectionMatrix(EVREye_Eye_Right, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR)
+    );
+
+    // HACK: The "HMD" position is actually the position of the left eye. We avoid multiplying in the eye transform when
+    //  rendering to the left eye, because doing so would double the distance between eyes creating a very uncomfortable
+    //  experience. It seems like there should be a nice linear-algebraic calculation for this, but I can't seem to
+    //  figure it out. See: https://github.com/ValveSoftware/openvr/issues/727
+    RLGL.Vr.config.eyesViewOffset[0] = MatrixIdentity(); 
+    RLGL.Vr.config.eyesViewOffset[1] = MatrixInvert(OpenVr34ToRaylib44Matrix(RLGL.Vr.hmd->GetEyeToHeadTransform(EVREye_Eye_Right)));
+
+    RLGL.Vr.config.eyeViewportLeft[0] = 0;
+    RLGL.Vr.config.eyeViewportLeft[1] = 0;
+    RLGL.Vr.config.eyeViewportLeft[2] = RLGL.Vr.config.renderTargetWidth;
+    RLGL.Vr.config.eyeViewportLeft[3] = RLGL.Vr.config.renderTargetHeight;
+
+    RLGL.Vr.config.eyeViewportRight[0] = RLGL.Vr.config.renderTargetWidth;
+    RLGL.Vr.config.eyeViewportRight[1] = 0;
+    RLGL.Vr.config.eyeViewportRight[2] = RLGL.Vr.config.renderTargetWidth;
+    RLGL.Vr.config.eyeViewportRight[3] = RLGL.Vr.config.renderTargetHeight;
+
+    RLGL.Vr.leftBounds = (VRTextureBounds_t){
+            .uMin = 0.f,
+            .vMin = 0.f,
+            .uMax = 0.5f,
+            .vMax = 1.f
+    };
+
+    RLGL.Vr.rightBounds = (VRTextureBounds_t){
+            .uMin = 0.5f,
+            .vMin = 0.f,
+            .uMax = 1.f,
+            .vMax = 1.f
+    };
+
+    RLGL.Vr.ovrTexture = (Texture_t){(void *) (unsigned int) RLGL.Vr.stereoTexId,
+                            ETextureType_TextureType_OpenGL,
+                            EColorSpace_ColorSpace_Auto};
+
     RLGL.Vr.simulatorReady = true;
+    RLGL.Vr.stereoRender = true;
+
 #else
     TRACELOG(LOG_WARNING, "RLGL: VR Simulator not supported on OpenGL 1.1");
 #endif
@@ -3825,7 +3952,16 @@ void InitVrSimulator(void)
 // NOTE: Camera (position, target, up) gets update with head tracking information
 void UpdateVrTracking(Camera *camera)
 {
-    // TODO: Simulate 1st person camera system
+    RLGL.Vr.compositor->WaitGetPoses(RLGL.Vr.trackedPoses, k_unMaxTrackedDeviceCount, NULL, 0);
+    if (RLGL.Vr.trackedPoses[k_unTrackedDeviceIndex_Hmd].bPoseIsValid) {
+        HmdMatrix34_t ovrMat = RLGL.Vr.trackedPoses[k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+        Matrix mat = OpenVr34ToRaylib44Matrix(ovrMat);
+        RLGL.Vr.hmdTf = mat;
+
+        camera->position = Vector3Transform(Vector3Zero(), mat);
+        camera->up = Vector3Transform((Vector3) {0, 1, 0}, mat);
+        camera->target = Vector3Transform((Vector3) {0, 0, -1}, mat);
+    }
 }
 
 // Close VR simulator for current device
@@ -3836,6 +3972,11 @@ void CloseVrSimulator(void)
     {
         rlUnloadTexture(RLGL.Vr.stereoTexId);       // Unload color texture
         rlUnloadFramebuffer(RLGL.Vr.stereoFboId);   // Unload stereo framebuffer and depth texture/renderbuffer
+
+        RLGL.Vr.hmd = NULL;
+        RLGL.Vr.compositor = NULL;
+
+        VR_ShutdownInternal();
     }
 #endif
 }
@@ -3844,84 +3985,7 @@ void CloseVrSimulator(void)
 void SetVrConfiguration(VrDeviceInfo hmd, Shader distortion)
 {
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
-    // Reset RLGL.Vr.config for a new values assignment
-    memset(&RLGL.Vr.config, 0, sizeof(RLGL.Vr.config));
-
-    // Assign distortion shader
-    RLGL.Vr.config.distortionShader = distortion;
-
-    // Compute aspect ratio
-    float aspect = ((float)hmd.hResolution*0.5f)/(float)hmd.vResolution;
-
-    // Compute lens parameters
-    float lensShift = (hmd.hScreenSize*0.25f - hmd.lensSeparationDistance*0.5f)/hmd.hScreenSize;
-    float leftLensCenter[2] = { 0.25f + lensShift, 0.5f };
-    float rightLensCenter[2] = { 0.75f - lensShift, 0.5f };
-    float leftScreenCenter[2] = { 0.25f, 0.5f };
-    float rightScreenCenter[2] = { 0.75f, 0.5f };
-
-    // Compute distortion scale parameters
-    // NOTE: To get lens max radius, lensShift must be normalized to [-1..1]
-    float lensRadius = fabsf(-1.0f - 4.0f*lensShift);
-    float lensRadiusSq = lensRadius*lensRadius;
-    float distortionScale = hmd.lensDistortionValues[0] +
-                            hmd.lensDistortionValues[1]*lensRadiusSq +
-                            hmd.lensDistortionValues[2]*lensRadiusSq*lensRadiusSq +
-                            hmd.lensDistortionValues[3]*lensRadiusSq*lensRadiusSq*lensRadiusSq;
-
-    TRACELOGD("RLGL: VR device configuration:");
-    TRACELOGD("    > Distortion Scale: %f", distortionScale);
-
-    float normScreenWidth = 0.5f;
-    float normScreenHeight = 1.0f;
-    float scaleIn[2] = { 2.0f/normScreenWidth, 2.0f/normScreenHeight/aspect };
-    float scale[2] = { normScreenWidth*0.5f/distortionScale, normScreenHeight*0.5f*aspect/distortionScale };
-
-    TRACELOGD("    > Distortion Shader: LeftLensCenter = { %f, %f }", leftLensCenter[0], leftLensCenter[1]);
-    TRACELOGD("    > Distortion Shader: RightLensCenter = { %f, %f }", rightLensCenter[0], rightLensCenter[1]);
-    TRACELOGD("    > Distortion Shader: Scale = { %f, %f }", scale[0], scale[1]);
-    TRACELOGD("    > Distortion Shader: ScaleIn = { %f, %f }", scaleIn[0], scaleIn[1]);
-
-    // Fovy is normally computed with: 2*atan2f(hmd.vScreenSize, 2*hmd.eyeToScreenDistance)
-    // ...but with lens distortion it is increased (see Oculus SDK Documentation)
-    //float fovy = 2.0f*atan2f(hmd.vScreenSize*0.5f*distortionScale, hmd.eyeToScreenDistance);     // Really need distortionScale?
-    float fovy = 2.0f*(float)atan2f(hmd.vScreenSize*0.5f, hmd.eyeToScreenDistance);
-
-    // Compute camera projection matrices
-    float projOffset = 4.0f*lensShift;      // Scaled to projection space coordinates [-1..1]
-    Matrix proj = MatrixPerspective(fovy, aspect, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
-    RLGL.Vr.config.eyesProjection[0] = MatrixMultiply(proj, MatrixTranslate(projOffset, 0.0f, 0.0f));
-    RLGL.Vr.config.eyesProjection[1] = MatrixMultiply(proj, MatrixTranslate(-projOffset, 0.0f, 0.0f));
-
-    // Compute camera transformation matrices
-    // NOTE: Camera movement might seem more natural if we model the head.
-    // Our axis of rotation is the base of our head, so we might want to add
-    // some y (base of head to eye level) and -z (center of head to eye protrusion) to the camera positions.
-    RLGL.Vr.config.eyesViewOffset[0] = MatrixTranslate(-hmd.interpupillaryDistance*0.5f, 0.075f, 0.045f);
-    RLGL.Vr.config.eyesViewOffset[1] = MatrixTranslate(hmd.interpupillaryDistance*0.5f, 0.075f, 0.045f);
-
-    // Compute eyes Viewports
-    RLGL.Vr.config.eyeViewportRight[2] = hmd.hResolution/2;
-    RLGL.Vr.config.eyeViewportRight[3] = hmd.vResolution;
-
-    RLGL.Vr.config.eyeViewportLeft[0] = hmd.hResolution/2;
-    RLGL.Vr.config.eyeViewportLeft[1] = 0;
-    RLGL.Vr.config.eyeViewportLeft[2] = hmd.hResolution/2;
-    RLGL.Vr.config.eyeViewportLeft[3] = hmd.vResolution;
-
-    if (RLGL.Vr.config.distortionShader.id > 0)
-    {
-        // Update distortion shader with lens and distortion-scale parameters
-        SetShaderValue(RLGL.Vr.config.distortionShader, GetShaderLocation(RLGL.Vr.config.distortionShader, "leftLensCenter"), leftLensCenter, UNIFORM_VEC2);
-        SetShaderValue(RLGL.Vr.config.distortionShader, GetShaderLocation(RLGL.Vr.config.distortionShader, "rightLensCenter"), rightLensCenter, UNIFORM_VEC2);
-        SetShaderValue(RLGL.Vr.config.distortionShader, GetShaderLocation(RLGL.Vr.config.distortionShader, "leftScreenCenter"), leftScreenCenter, UNIFORM_VEC2);
-        SetShaderValue(RLGL.Vr.config.distortionShader, GetShaderLocation(RLGL.Vr.config.distortionShader, "rightScreenCenter"), rightScreenCenter, UNIFORM_VEC2);
-
-        SetShaderValue(RLGL.Vr.config.distortionShader, GetShaderLocation(RLGL.Vr.config.distortionShader, "scale"), scale, UNIFORM_VEC2);
-        SetShaderValue(RLGL.Vr.config.distortionShader, GetShaderLocation(RLGL.Vr.config.distortionShader, "scaleIn"), scaleIn, UNIFORM_VEC2);
-        SetShaderValue(RLGL.Vr.config.distortionShader, GetShaderLocation(RLGL.Vr.config.distortionShader, "hmdWarpParam"), hmd.lensDistortionValues, UNIFORM_VEC4);
-        SetShaderValue(RLGL.Vr.config.distortionShader, GetShaderLocation(RLGL.Vr.config.distortionShader, "chromaAbParam"), hmd.chromaAbCorrection, UNIFORM_VEC4);
-    }
+    // NOP: OpenVR tells us this information
 #endif
 }
 
@@ -3977,6 +4041,17 @@ void EndVrDrawing(void)
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
     if (RLGL.Vr.simulatorReady)
     {
+        // Submit frames to OpenVR
+        EVRCompositorError err = RLGL.Vr.compositor->Submit(EVREye_Eye_Left, &RLGL.Vr.ovrTexture, &RLGL.Vr.leftBounds, 0);
+        if (err != EVRCompositorError_VRCompositorError_None) {
+            TraceLog(LOG_ERROR, "OPENVR: Failed to submit frame (%d)", err);
+        }
+
+        err = RLGL.Vr.compositor->Submit(EVREye_Eye_Right, &RLGL.Vr.ovrTexture, &RLGL.Vr.rightBounds, 0);
+        if (err != EVRCompositorError_VRCompositorError_None) {
+            TraceLog(LOG_ERROR, "OPENVR: Failed to submit frame (%d)", err);
+        }
+
         RLGL.Vr.stereoRender = false;   // Disable stereo render
 
         rlDisableFramebuffer();         // Unbind current framebuffer
@@ -3994,8 +4069,8 @@ void EndVrDrawing(void)
         rlLoadIdentity();                                       // Reset internal modelview matrix
 
         // Draw stereo framebuffer texture using distortion shader if available
-        if (RLGL.Vr.config.distortionShader.id > 0) RLGL.State.currentShader = RLGL.Vr.config.distortionShader;
-        else RLGL.State.currentShader = GetShaderDefault();
+        // if (RLGL.Vr.config.distortionShader.id > 0) RLGL.State.currentShader = RLGL.Vr.config.distortionShader;
+        RLGL.State.currentShader = GetShaderDefault();
 
         rlEnableTexture(RLGL.Vr.stereoTexId);
 
@@ -4763,8 +4838,8 @@ static void SetStereoView(int eye, Matrix matProjection, Matrix matModelView)
     Matrix eyeModelView = matModelView;
 
     // Setup viewport and projection/modelview matrices using tracking data
-    rlViewport(eye*RLGL.State.framebufferWidth/2, 0, RLGL.State.framebufferWidth/2, RLGL.State.framebufferHeight);
 
+    rlViewport((int) RLGL.Vr.config.renderTargetWidth * eye, 0, RLGL.Vr.config.renderTargetWidth, RLGL.Vr.config.renderTargetHeight);
     // Apply view offset to modelview matrix
     eyeModelView = MatrixMultiply(matModelView, RLGL.Vr.config.eyesViewOffset[eye]);
 

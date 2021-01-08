@@ -25,6 +25,11 @@ if (glfw3_FOUND)
   set(LIBS_PRIVATE ${LIBS_PRIVATE} glfw)
 endif()
 
+find_path(OPENVR_INCLUDE_DIR openvr_capi.h)
+find_library(OPENVR_LIB openvr_api)
+include_directories(${OPENVR_INCLUDE_DIR})
+link_libraries(${OPENVR_LIB})
+
 # Explicitly check against "ON", because USE_EXTERNAL_GLFW is a tristate option
 if(NOT glfw3_FOUND AND NOT USE_EXTERNAL_GLFW STREQUAL "ON" AND "${PLATFORM}" MATCHES "Desktop")
   MESSAGE(STATUS "Using raylib's GLFW")
