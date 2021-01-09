@@ -303,6 +303,13 @@ typedef struct Camera2D {
     float zoom;             // Camera zoom (scaling), should be 1.0f by default
 } Camera2D;
 
+typedef struct VrRig {
+    Vector3 trackingOrigin; // Point HMD is tracked relative to
+    Matrix hmdTransform;    // Origin -> HMD transform
+    Vector3 hmdPosition;    // HMD position relative to origin
+    Quaternion hmdRotation; // HMD rotation
+} VrRig;
+
 // Vertex data definning a mesh
 // NOTE: Data stored in CPU memory (and GPU)
 typedef struct Mesh {
@@ -1437,12 +1444,13 @@ RLAPI void EndBlendMode(void);                                            // End
 // VR control functions
 RLAPI void InitVrSimulator(void);                       // Init VR simulator for selected device parameters
 RLAPI void CloseVrSimulator(void);                      // Close VR simulator for current device
-RLAPI void UpdateVrTracking(Camera *camera);            // Update VR tracking (position and orientation) and camera
+RLAPI void UpdateVrTracking(VrRig *rig);            // Update VR tracking (position and orientation) and camera
 RLAPI void SetVrConfiguration(VrDeviceInfo info, Shader distortion);      // Set stereo rendering configuration parameters
 RLAPI bool IsVrSimulatorReady(void);                    // Detect if VR simulator is ready
 RLAPI void ToggleVrMode(void);                          // Enable/Disable VR experience
 RLAPI void BeginVrDrawing(void);                        // Begin VR simulator stereo rendering
 RLAPI void EndVrDrawing(void);                          // End VR simulator stereo rendering
+RLAPI void BeginMode3DVr(VrRig rig);
 
 //------------------------------------------------------------------------------------
 // Audio Loading and Playing Functions (Module: audio)

@@ -3854,6 +3854,20 @@ Matrix OpenVr34ToRaylib44Matrix(HmdMatrix34_t mat) {
     };
 }
 
+void BeginMode3DVr(VrRig rig) {
+    rlglDraw();                         // Draw Buffers (Only OpenGL 3+ and ES2)
+
+    rlMatrixMode(RL_PROJECTION);        // Switch to projection matrix
+    rlPushMatrix();                     // Save previous matrix, which contains the settings for the 2d ortho projection
+    rlLoadIdentity();                   // Reset current matrix (projection)
+
+    rlMatrixMode(RL_MODELVIEW);         // Switch back to modelview matrix
+    rlLoadIdentity();                   // Reset current matrix (modelview)
+    rlMultMatrixf(MatrixToFloat(RLGL.Vr.hmdTf));      // Multiply modelview matrix by view matrix (camera)
+
+    rlEnableDepthTest();                // Enable DEPTH_TEST for 3D
+}
+
 // Init VR simulator for selected device parameters
 // NOTE: It modifies the global variable: RLGL.Vr.stereoFboId
 void InitVrSimulator()
@@ -3910,7 +3924,7 @@ void InitVrSimulator()
     //  experience. It seems like there should be a nice linear-algebraic calculation for this, but I can't seem to
     //  figure it out. See: https://github.com/ValveSoftware/openvr/issues/727
     RLGL.Vr.config.eyesViewOffset[0] = MatrixIdentity(); 
-    RLGL.Vr.config.eyesViewOffset[1] = MatrixInvert(OpenVr34ToRaylib44Matrix(RLGL.Vr.hmd->GetEyeToHeadTransform(EVREye_Eye_Right)));
+    RLGL.Vr.config.eyesViewOffset[1] = OpenVr34ToRaylib44Matrix(RLGL.Vr.hmd->GetEyeToHeadTransform(EVREye_Eye_Right));
 
     RLGL.Vr.config.eyeViewportLeft[0] = 0;
     RLGL.Vr.config.eyeViewportLeft[1] = 0;
@@ -3950,17 +3964,15 @@ void InitVrSimulator()
 
 // Update VR tracking (position and orientation) and camera
 // NOTE: Camera (position, target, up) gets update with head tracking information
-void UpdateVrTracking(Camera *camera)
+void UpdateVrTracking(VrRig *rig)
 {
     RLGL.Vr.compositor->WaitGetPoses(RLGL.Vr.trackedPoses, k_unMaxTrackedDeviceCount, NULL, 0);
     if (RLGL.Vr.trackedPoses[k_unTrackedDeviceIndex_Hmd].bPoseIsValid) {
         HmdMatrix34_t ovrMat = RLGL.Vr.trackedPoses[k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
         Matrix mat = OpenVr34ToRaylib44Matrix(ovrMat);
-        RLGL.Vr.hmdTf = mat;
-
-        camera->position = Vector3Transform(Vector3Zero(), mat);
-        camera->up = Vector3Transform((Vector3) {0, 1, 0}, mat);
-        camera->target = Vector3Transform((Vector3) {0, 0, -1}, mat);
+        rig->hmdTransform = RLGL.Vr.hmdTf = mat;
+        rig->hmdPosition = Vector3Transform(Vector3Zero(), mat);
+        rig->hmdRotation = QuaternionFromMatrix(mat);
     }
 }
 
@@ -4841,7 +4853,7 @@ static void SetStereoView(int eye, Matrix matProjection, Matrix matModelView)
 
     rlViewport((int) RLGL.Vr.config.renderTargetWidth * eye, 0, RLGL.Vr.config.renderTargetWidth, RLGL.Vr.config.renderTargetHeight);
     // Apply view offset to modelview matrix
-    eyeModelView = MatrixMultiply(matModelView, RLGL.Vr.config.eyesViewOffset[eye]);
+    eyeModelView = MatrixInvert(MatrixMultiply(RLGL.Vr.config.eyesViewOffset[eye], matModelView));
 
     // Set current eye projection matrix
     eyeProjection = RLGL.Vr.config.eyesProjection[eye];
