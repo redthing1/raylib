@@ -909,7 +909,7 @@ typedef struct rlglData {
     } ExtSupported;     // Extensions supported flags
 #if defined(SUPPORT_VR_SIMULATOR)
     struct {
-        struct VR_IVRSystem_FnTable *hmd;
+        struct VR_IVRSystem_FnTable *vrSystem;
         struct VR_IVRCompositor_FnTable *compositor;
         VrStereoConfig config;              // VR stereo configuration for simulator
         unsigned int stereoFboId;           // VR stereo rendering framebuffer id
@@ -3863,14 +3863,16 @@ void BeginMode3DVr(VrRig rig) {
 
     rlMatrixMode(RL_MODELVIEW);         // Switch back to modelview matrix
     rlLoadIdentity();                   // Reset current matrix (modelview)
-    rlMultMatrixf(MatrixToFloat(RLGL.Vr.hmdTf));      // Multiply modelview matrix by view matrix (camera)
+
+    Matrix offset = MatrixTranslate(rig.trackingOrigin.x, rig.trackingOrigin.y, rig.trackingOrigin.z);
+    rlMultMatrixf(MatrixToFloat(MatrixMultiply(RLGL.Vr.hmdTf, offset)));      // Multiply modelview matrix by view matrix (camera)
 
     rlEnableDepthTest();                // Enable DEPTH_TEST for 3D
 }
 
 // Init VR simulator for selected device parameters
 // NOTE: It modifies the global variable: RLGL.Vr.stereoFboId
-void InitVrSimulator()
+void InitVr()
 {
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
     TraceLog(LOG_INFO, "OPENVR: Initializing OpenVR");
@@ -3891,13 +3893,13 @@ void InitVrSimulator()
         TraceLog(LOG_FATAL, "OPENVR: Failed to initialize runtime: %s", VR_GetVRInitErrorAsEnglishDescription(err));
     }
 
-    RLGL.Vr.hmd = (struct VR_IVRSystem_FnTable *) GetOpenVrTable(IVRSystem_Version);
+    RLGL.Vr.vrSystem = (struct VR_IVRSystem_FnTable *) GetOpenVrTable(IVRSystem_Version);
     RLGL.Vr.compositor = (struct VR_IVRCompositor_FnTable *) GetOpenVrTable(IVRCompositor_Version);
 
     memset(&RLGL.Vr.config, 0, sizeof(RLGL.Vr.config));
 
     // NOTE: OpenVR gives us the size of *one* eye
-    RLGL.Vr.hmd->GetRecommendedRenderTargetSize(&RLGL.Vr.config.renderTargetWidth, &RLGL.Vr.config.renderTargetHeight);
+    RLGL.Vr.vrSystem->GetRecommendedRenderTargetSize(&RLGL.Vr.config.renderTargetWidth, &RLGL.Vr.config.renderTargetHeight);
 
     uint32_t fbWidth = 2 * RLGL.Vr.config.renderTargetWidth;
     uint32_t fbHeight = RLGL.Vr.config.renderTargetHeight;
@@ -3912,19 +3914,19 @@ void InitVrSimulator()
     rlFramebufferAttach(RLGL.Vr.stereoFboId, depthId, RL_ATTACHMENT_DEPTH, RL_ATTACHMENT_RENDERBUFFER);
 
     RLGL.Vr.config.eyesProjection[0] = OpenVr44ToRaylib44Matrix(
-        RLGL.Vr.hmd->GetProjectionMatrix(EVREye_Eye_Left, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR)
+        RLGL.Vr.vrSystem->GetProjectionMatrix(EVREye_Eye_Left, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR)
     );
 
     RLGL.Vr.config.eyesProjection[1] = OpenVr44ToRaylib44Matrix(
-        RLGL.Vr.hmd->GetProjectionMatrix(EVREye_Eye_Right, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR)
+        RLGL.Vr.vrSystem->GetProjectionMatrix(EVREye_Eye_Right, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR)
     );
 
     // HACK: The "HMD" position is actually the position of the left eye. We avoid multiplying in the eye transform when
     //  rendering to the left eye, because doing so would double the distance between eyes creating a very uncomfortable
     //  experience. It seems like there should be a nice linear-algebraic calculation for this, but I can't seem to
     //  figure it out. See: https://github.com/ValveSoftware/openvr/issues/727
-    RLGL.Vr.config.eyesViewOffset[0] = MatrixIdentity(); 
-    RLGL.Vr.config.eyesViewOffset[1] = OpenVr34ToRaylib44Matrix(RLGL.Vr.hmd->GetEyeToHeadTransform(EVREye_Eye_Right));
+    RLGL.Vr.config.eyesViewOffset[0] = MatrixIdentity();
+    RLGL.Vr.config.eyesViewOffset[1] = OpenVr34ToRaylib44Matrix(RLGL.Vr.vrSystem->GetEyeToHeadTransform(EVREye_Eye_Right));
 
     RLGL.Vr.config.eyeViewportLeft[0] = 0;
     RLGL.Vr.config.eyeViewportLeft[1] = 0;
@@ -3962,22 +3964,55 @@ void InitVrSimulator()
 #endif
 }
 
-// Update VR tracking (position and orientation) and camera
-// NOTE: Camera (position, target, up) gets update with head tracking information
+// Update VR tracking. Must be called once per frame.
+// Updates hmd and controllers in given VrRig.
 void UpdateVrTracking(VrRig *rig)
 {
     RLGL.Vr.compositor->WaitGetPoses(RLGL.Vr.trackedPoses, k_unMaxTrackedDeviceCount, NULL, 0);
+
+    rig->hmd.id = k_unTrackedDeviceIndex_Hmd;
+    rig->hmd.valid = false;
+
     if (RLGL.Vr.trackedPoses[k_unTrackedDeviceIndex_Hmd].bPoseIsValid) {
         HmdMatrix34_t ovrMat = RLGL.Vr.trackedPoses[k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
         Matrix mat = OpenVr34ToRaylib44Matrix(ovrMat);
-        rig->hmdTransform = RLGL.Vr.hmdTf = mat;
-        rig->hmdPosition = Vector3Transform(Vector3Zero(), mat);
-        rig->hmdRotation = QuaternionFromMatrix(mat);
+        rig->hmd.valid = true;
+        rig->hmd.transform = RLGL.Vr.hmdTf = mat;
+        rig->hmd.position = (Vector3) { mat.m12, mat.m13, mat.m14 };
+        rig->hmd.rotation = QuaternionFromMatrix(mat);
+    }
+
+    // Invalidate controllers
+    for (int i = 0; i < 2; i++) {
+        rig->controllers[i].id = k_unTrackedDeviceIndexInvalid;
+        rig->controllers[i].valid = false;
+    }
+
+    for (unsigned long i = 0; i < k_unMaxTrackedDeviceCount; i++) {
+        if (!RLGL.Vr.vrSystem->IsTrackedDeviceConnected(i)) continue;
+
+        TrackedDevicePose_t pose = RLGL.Vr.trackedPoses[i];
+        ETrackedDeviceClass cls = RLGL.Vr.vrSystem->GetTrackedDeviceClass(i);
+        if (cls == ETrackedDeviceClass_TrackedDeviceClass_Controller) {
+            ETrackedControllerRole role = RLGL.Vr.vrSystem->GetControllerRoleForTrackedDeviceIndex(i);
+
+            int hand = 0;
+            if (role == ETrackedControllerRole_TrackedControllerRole_LeftHand) hand = 0;
+            else if (role == ETrackedControllerRole_TrackedControllerRole_RightHand) hand = 1;
+            else continue; // TODO: Abstract other non-controller inputs like generic trackers
+
+            Matrix mat = OpenVr34ToRaylib44Matrix(pose.mDeviceToAbsoluteTracking);
+            rig->controllers[hand].id = i;
+            rig->controllers[hand].valid = pose.bPoseIsValid;
+            rig->controllers[hand].transform = mat;
+            rig->controllers[hand].position = (Vector3) { mat.m12, mat.m13, mat.m14 };
+            rig->controllers[hand].rotation = QuaternionFromMatrix(mat);
+        }
     }
 }
 
 // Close VR simulator for current device
-void CloseVrSimulator(void)
+void CloseVr(void)
 {
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
     if (RLGL.Vr.simulatorReady)
@@ -3985,19 +4020,11 @@ void CloseVrSimulator(void)
         rlUnloadTexture(RLGL.Vr.stereoTexId);       // Unload color texture
         rlUnloadFramebuffer(RLGL.Vr.stereoFboId);   // Unload stereo framebuffer and depth texture/renderbuffer
 
-        RLGL.Vr.hmd = NULL;
+        RLGL.Vr.vrSystem = NULL;
         RLGL.Vr.compositor = NULL;
 
         VR_ShutdownInternal();
     }
-#endif
-}
-
-// Set stereo rendering configuration parameters
-void SetVrConfiguration(VrDeviceInfo hmd, Shader distortion)
-{
-#if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
-    // NOP: OpenVR tells us this information
 #endif
 }
 

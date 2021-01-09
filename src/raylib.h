@@ -303,11 +303,18 @@ typedef struct Camera2D {
     float zoom;             // Camera zoom (scaling), should be 1.0f by default
 } Camera2D;
 
+typedef struct VrTrackedDevice {
+    unsigned long id;        // OpenVR device ID
+    bool valid;             // Pose validity as reported by OpenVR
+    Matrix transform;       // Tracking origin -> device transform
+    Vector3 position;       // Device position relative to origin
+    Quaternion rotation;    // Device rotation
+} VrTrackedDevice;
+
 typedef struct VrRig {
     Vector3 trackingOrigin; // Point HMD is tracked relative to
-    Matrix hmdTransform;    // Origin -> HMD transform
-    Vector3 hmdPosition;    // HMD position relative to origin
-    Quaternion hmdRotation; // HMD rotation
+    VrTrackedDevice hmd;
+    VrTrackedDevice controllers[2];
 } VrRig;
 
 // Vertex data definning a mesh
@@ -1442,15 +1449,14 @@ RLAPI void BeginBlendMode(int mode);                                      // Beg
 RLAPI void EndBlendMode(void);                                            // End blending mode (reset to default: alpha blending)
 
 // VR control functions
-RLAPI void InitVrSimulator(void);                       // Init VR simulator for selected device parameters
-RLAPI void CloseVrSimulator(void);                      // Close VR simulator for current device
+RLAPI void InitVr(void);                       // Init VR simulator for selected device parameters
+RLAPI void CloseVr(void);                      // Close VR simulator for current device
 RLAPI void UpdateVrTracking(VrRig *rig);            // Update VR tracking (position and orientation) and camera
-RLAPI void SetVrConfiguration(VrDeviceInfo info, Shader distortion);      // Set stereo rendering configuration parameters
 RLAPI bool IsVrSimulatorReady(void);                    // Detect if VR simulator is ready
 RLAPI void ToggleVrMode(void);                          // Enable/Disable VR experience
 RLAPI void BeginVrDrawing(void);                        // Begin VR simulator stereo rendering
 RLAPI void EndVrDrawing(void);                          // End VR simulator stereo rendering
-RLAPI void BeginMode3DVr(VrRig rig);
+RLAPI void BeginMode3DVr(VrRig rig);                  // Begin rendering w/ 6 DOF (HMD moves relative to trackingOrigin)
 
 //------------------------------------------------------------------------------------
 // Audio Loading and Playing Functions (Module: audio)
