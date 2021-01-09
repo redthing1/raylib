@@ -1,6 +1,7 @@
 /**********************************************************************************************
 *
 *   rlgl v3.1 - raylib OpenGL abstraction layer
+*               Modified for experimental OpenVR support: see https://github.com/dhsavell/raylib-openvr
 *
 *   rlgl is a wrapper for multiple OpenGL versions (1.1, 2.1, 3.3 Core, ES 2.0) to
 *   pseudo-OpenGL 1.1 style functions (rlVertex, rlTranslate, rlRotate...).

@@ -1,6 +1,7 @@
 /**********************************************************************************************
 *
 *   raylib - A simple and easy-to-use library to enjoy videogames programming (www.raylib.com)
+*            Modified for experimental OpenVR support: see https://github.com/dhsavell/raylib-openvr
 *
 *   FEATURES:
 *       - NO external dependencies, all required libraries included with raylib
