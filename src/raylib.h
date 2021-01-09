@@ -1449,14 +1449,14 @@ RLAPI void BeginBlendMode(int mode);                                      // Beg
 RLAPI void EndBlendMode(void);                                            // End blending mode (reset to default: alpha blending)
 
 // VR control functions
-RLAPI void InitVr(void);                       // Init VR simulator for selected device parameters
-RLAPI void CloseVr(void);                      // Close VR simulator for current device
-RLAPI void UpdateVrTracking(VrRig *rig);            // Update VR tracking (position and orientation) and camera
-RLAPI bool IsVrSimulatorReady(void);                    // Detect if VR simulator is ready
-RLAPI void ToggleVrMode(void);                          // Enable/Disable VR experience
-RLAPI void BeginVrDrawing(void);                        // Begin VR simulator stereo rendering
-RLAPI void EndVrDrawing(void);                          // End VR simulator stereo rendering
-RLAPI void BeginMode3DVr(VrRig rig);                  // Begin rendering w/ 6 DOF (HMD moves relative to trackingOrigin)
+RLAPI void InitVr(void);                                              // Init OpenVR for connected device
+RLAPI void CloseVr(void);                                             // Shutdown OpenVR
+RLAPI void UpdateVrTracking(VrRig *rig);                              // Update VR tracking and input
+RLAPI bool IsVrSimulatorReady(void);                                  // Detect if OpenVR is ready
+RLAPI void ToggleVrMode(void);                                        // Enable/Disable VR experience
+RLAPI void BeginVrDrawing(void);                                      // Begin VR stereo rendering
+RLAPI void EndVrDrawing(void);                                        // End VR stereo rendering
+RLAPI void BeginMode3DVr(VrRig rig);                                  // Begin 6DOF rendering (call before BeginVrDrawing, end with EndMode3D())
 
 //------------------------------------------------------------------------------------
 // Audio Loading and Playing Functions (Module: audio)
