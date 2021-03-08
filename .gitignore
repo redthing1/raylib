@@ -1,6 +1,9 @@
 # Ignore generated files
 # ...
 
+src/raygui.c
+libraylib.so.*
+
 # Ignore VIM's backup generated files
 *.swp
 *.swo
