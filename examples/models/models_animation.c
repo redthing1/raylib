@@ -11,7 +11,7 @@
 *
 ********************************************************************************************
 *
-* To export a model from blender, make sure it is not posed, the vertices need to be in the 
+* To export a model from blender, make sure it is not posed, the vertices need to be in the
 * same position as they would be in edit mode.
 * and that the scale of your models is set to 0. Scaling can be done from the export menu.
 *
@@ -37,17 +37,17 @@ int main(void)
     camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };      // Camera looking at point
     camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
     camera.fovy = 45.0f;                                // Camera field-of-view Y
-    camera.type = CAMERA_PERSPECTIVE;                   // Camera mode type
+    camera.projection = CAMERA_PERSPECTIVE;             // Camera mode type
 
-    Model model = LoadModel("resources/guy/guy.iqm");               // Load the animated model mesh and basic data
-    Texture2D texture = LoadTexture("resources/guy/guytex.png");    // Load model texture and set material
-    SetMaterialTexture(&model.materials[0], MAP_DIFFUSE, texture);  // Set model material map texture
+    Model model = LoadModel("resources/models/iqm/guy.iqm");                    // Load the animated model mesh and basic data
+    Texture2D texture = LoadTexture("resources/models/iqm/guytex.png");         // Load model texture and set material
+    SetMaterialTexture(&model.materials[0], MATERIAL_MAP_DIFFUSE, texture);     // Set model material map texture
 
     Vector3 position = { 0.0f, 0.0f, 0.0f };            // Set model position
 
     // Load animation data
-    int animsCount = 0;
-    ModelAnimation *anims = LoadModelAnimations("resources/guy/guyanim.iqm", &animsCount);
+    unsigned int animsCount = 0;
+    ModelAnimation *anims = LoadModelAnimations("resources/models/iqm/guyanim.iqm", &animsCount);
     int animFrameCounter = 0;
 
     SetCameraMode(camera, CAMERA_FREE); // Set free camera mode
@@ -100,9 +100,9 @@ int main(void)
     // De-Initialization
     //--------------------------------------------------------------------------------------
     UnloadTexture(texture);     // Unload texture
-    
+
     // Unload model animations data
-    for (int i = 0; i < animsCount; i++) UnloadModelAnimation(anims[i]);
+    for (unsigned int i = 0; i < animsCount; i++) UnloadModelAnimation(anims[i]);
     RL_FREE(anims);
 
     UnloadModel(model);         // Unload model

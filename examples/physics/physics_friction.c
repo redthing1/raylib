@@ -1,25 +1,20 @@
 /*******************************************************************************************
 *
-*   Physac - Physics friction
+*   raylib [physac] example - physics friction
 *
-*   NOTE 1: Physac requires multi-threading, when InitPhysics() a second thread is created to manage physics calculations.
-*   NOTE 2: Physac requires static C library linkage to avoid dependency on MinGW DLL (-static -lpthread)
+*   This example has been created using raylib 1.5 (www.raylib.com)
+*   raylib is licensed under an unmodified zlib/libpng license (View raylib.h for details)
 *
-*   Use the following line to compile:
+*   This example uses physac 1.1 (https://github.com/raysan5/raylib/blob/master/src/physac.h)
 *
-*   gcc -o $(NAME_PART).exe $(FILE_NAME) -s -static  /
-*       -lraylib -lpthread -lglfw3 -lopengl32 -lgdi32 -lopenal32 -lwinmm /
-*       -std=c99 -Wl,--subsystem,windows -Wl,-allow-multiple-definition
-*
-*   Copyright (c) 2016-2018 Victor Fisac
+*   Copyright (c) 2016-2021 Victor Fisac (@victorfisac) and Ramon Santamaria (@raysan5)
 *
 ********************************************************************************************/
 
 #include "raylib.h"
 
 #define PHYSAC_IMPLEMENTATION
-#define PHYSAC_NO_THREADS
-#include "physac.h"
+#include "extras/physac.h"
 
 int main(void)
 {
@@ -29,7 +24,7 @@ int main(void)
     const int screenHeight = 450;
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);
-    InitWindow(screenWidth, screenHeight, "Physac [raylib] - Physics friction");
+    InitWindow(screenWidth, screenHeight, "raylib [physac] example - physics friction");
 
     // Physac logo drawing position
     int logoX = screenWidth - MeasureText("Physac", 30) - 10;
@@ -39,18 +34,18 @@ int main(void)
     InitPhysics();
 
     // Create floor rectangle physics body
-    PhysicsBody floor = CreatePhysicsBodyRectangle((Vector2){ screenWidth/2, screenHeight }, screenWidth, 100, 10);
+    PhysicsBody floor = CreatePhysicsBodyRectangle((Vector2){ screenWidth/2.0f, (float)screenHeight }, (float)screenWidth, 100, 10);
     floor->enabled = false; // Disable body state to convert it to static (no dynamics, but collisions)
-    PhysicsBody wall = CreatePhysicsBodyRectangle((Vector2){ screenWidth/2, screenHeight*0.8f }, 10, 80, 10);
+    PhysicsBody wall = CreatePhysicsBodyRectangle((Vector2){ screenWidth/2.0f, screenHeight*0.8f }, 10, 80, 10);
     wall->enabled = false; // Disable body state to convert it to static (no dynamics, but collisions)
 
     // Create left ramp physics body
-    PhysicsBody rectLeft = CreatePhysicsBodyRectangle((Vector2){ 25, screenHeight - 5 }, 250, 250, 10);
+    PhysicsBody rectLeft = CreatePhysicsBodyRectangle((Vector2){ 25, (float)screenHeight - 5 }, 250, 250, 10);
     rectLeft->enabled = false; // Disable body state to convert it to static (no dynamics, but collisions)
     SetPhysicsBodyRotation(rectLeft, 30*DEG2RAD);
 
     // Create right ramp  physics body
-    PhysicsBody rectRight = CreatePhysicsBodyRectangle((Vector2){ screenWidth - 25, screenHeight - 5 }, 250, 250, 10);
+    PhysicsBody rectRight = CreatePhysicsBodyRectangle((Vector2){ (float)screenWidth - 25, (float)screenHeight - 5 }, 250, 250, 10);
     rectRight->enabled = false; // Disable body state to convert it to static (no dynamics, but collisions)
     SetPhysicsBodyRotation(rectRight, 330*DEG2RAD);
 
@@ -60,7 +55,7 @@ int main(void)
     bodyA->dynamicFriction = 0.1f;
     SetPhysicsBodyRotation(bodyA, 30*DEG2RAD);
 
-    PhysicsBody bodyB = CreatePhysicsBodyRectangle((Vector2){ screenWidth - 35, screenHeight*0.6f }, 40, 40, 10);
+    PhysicsBody bodyB = CreatePhysicsBodyRectangle((Vector2){ (float)screenWidth - 35, (float)screenHeight*0.6f }, 40, 40, 10);
     bodyB->staticFriction = 1.0f;
     bodyB->dynamicFriction = 1.0f;
     SetPhysicsBodyRotation(bodyB, 330*DEG2RAD);
@@ -73,9 +68,9 @@ int main(void)
     {
         // Update
         //----------------------------------------------------------------------------------
-        RunPhysicsStep();
+        UpdatePhysics();            // Update physics system
 
-        if (IsKeyPressed('R'))    // Reset physics input
+        if (IsKeyPressed(KEY_R))    // Reset physics system
         {
             // Reset dynamic physics bodies position, velocity and rotation
             bodyA->position = (Vector2){ 35, screenHeight*0.6f };
@@ -83,7 +78,7 @@ int main(void)
             bodyA->angularVelocity = 0;
             SetPhysicsBodyRotation(bodyA, 30*DEG2RAD);
 
-            bodyB->position = (Vector2){ screenWidth - 35, screenHeight*0.6f };
+            bodyB->position = (Vector2){ (float)screenWidth - 35, screenHeight * 0.6f };
             bodyB->velocity = (Vector2){ 0, 0 };
             bodyB->angularVelocity = 0;
             SetPhysicsBodyRotation(bodyB, 330*DEG2RAD);
@@ -123,9 +118,9 @@ int main(void)
 
             DrawRectangle(0, screenHeight - 49, screenWidth, 49, BLACK);
 
-            DrawText("Friction amount", (screenWidth - MeasureText("Friction amount", 30))/2, 75, 30, WHITE);
-            DrawText("0.1", bodyA->position.x - MeasureText("0.1", 20)/2, bodyA->position.y - 7, 20, WHITE);
-            DrawText("1", bodyB->position.x - MeasureText("1", 20)/2, bodyB->position.y - 7, 20, WHITE);
+            DrawText("Friction amount", (screenWidth - MeasureText("Friction amount", 30))/2.0f, 75, 30, WHITE);
+            DrawText("0.1", (int)bodyA->position.x - MeasureText("0.1", 20)/2, (int)bodyA->position.y - 7, 20, WHITE);
+            DrawText("1", (int)bodyB->position.x - MeasureText("1", 20)/2, (int)bodyB->position.y - 7, 20, WHITE);
 
             DrawText("Press 'R' to reset example", 10, 10, 10, WHITE);
 

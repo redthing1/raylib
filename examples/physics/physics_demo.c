@@ -1,25 +1,20 @@
 /*******************************************************************************************
 *
-*   Physac - Physics demo
+*   raylib [physac] example - physics demo
 *
-*   NOTE 1: Physac requires multi-threading, when InitPhysics() a second thread is created to manage physics calculations.
-*   NOTE 2: Physac requires static C library linkage to avoid dependency on MinGW DLL (-static -lpthread)
+*   This example has been created using raylib 1.5 (www.raylib.com)
+*   raylib is licensed under an unmodified zlib/libpng license (View raylib.h for details)
 *
-*   Use the following line to compile:
+*   This example uses physac 1.1 (https://github.com/raysan5/raylib/blob/master/src/physac.h)
 *
-*   gcc -o $(NAME_PART).exe $(FILE_NAME) -s -static  /
-*       -lraylib -lpthread -lglfw3 -lopengl32 -lgdi32 -lopenal32 -lwinmm /
-*       -std=c99 -Wl,--subsystem,windows -Wl,-allow-multiple-definition
-*
-*   Copyright (c) 2016-2018 Victor Fisac
+*   Copyright (c) 2016-2021 Victor Fisac (@victorfisac) and Ramon Santamaria (@raysan5)
 *
 ********************************************************************************************/
 
 #include "raylib.h"
 
 #define PHYSAC_IMPLEMENTATION
-#define PHYSAC_NO_THREADS
-#include "physac.h"
+#include "extras/physac.h"
 
 int main(void)
 {
@@ -29,22 +24,21 @@ int main(void)
     const int screenHeight = 450;
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);
-    InitWindow(screenWidth, screenHeight, "Physac [raylib] - Physics demo");
+    InitWindow(screenWidth, screenHeight, "raylib [physac] example - physics demo");
 
     // Physac logo drawing position
     int logoX = screenWidth - MeasureText("Physac", 30) - 10;
     int logoY = 15;
-    bool needsReset = false;
 
     // Initialize physics and default physics bodies
     InitPhysics();
 
     // Create floor rectangle physics body
-    PhysicsBody floor = CreatePhysicsBodyRectangle((Vector2){ screenWidth/2, screenHeight }, 500, 100, 10);
+    PhysicsBody floor = CreatePhysicsBodyRectangle((Vector2){ screenWidth/2.0f, (float)screenHeight }, 500, 100, 10);
     floor->enabled = false;         // Disable body state to convert it to static (no dynamics, but collisions)
 
     // Create obstacle circle physics body
-    PhysicsBody circle = CreatePhysicsBodyCircle((Vector2){ screenWidth/2, screenHeight/2 }, 45, 10);
+    PhysicsBody circle = CreatePhysicsBodyCircle((Vector2){ screenWidth/2.0f, screenHeight/2.0f }, 45, 10);
     circle->enabled = false;        // Disable body state to convert it to static (no dynamics, but collisions)
 
     SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
@@ -55,30 +49,22 @@ int main(void)
     {
         // Update
         //----------------------------------------------------------------------------------
-        // Delay initialization of variables due to physics reset async
-        RunPhysicsStep();
+        UpdatePhysics();            // Update physics system
 
-        if (needsReset)
-        {
-            floor = CreatePhysicsBodyRectangle((Vector2){ screenWidth/2, screenHeight }, 500, 100, 10);
-            floor->enabled = false;
-
-            circle = CreatePhysicsBodyCircle((Vector2){ screenWidth/2, screenHeight/2 }, 45, 10);
-            circle->enabled = false;
-
-            needsReset = false;
-        }
-
-        // Reset physics input
-        if (IsKeyPressed('R'))
+        if (IsKeyPressed(KEY_R))    // Reset physics system
         {
             ResetPhysics();
-            needsReset = true;
+
+            floor = CreatePhysicsBodyRectangle((Vector2){ screenWidth/2.0f, (float)screenHeight }, 500, 100, 10);
+            floor->enabled = false;
+
+            circle = CreatePhysicsBodyCircle((Vector2){ screenWidth/2.0f, screenHeight/2.0f }, 45, 10);
+            circle->enabled = false;
         }
 
         // Physics body creation inputs
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) CreatePhysicsBodyPolygon(GetMousePosition(), GetRandomValue(20, 80), GetRandomValue(3, 8), 10);
-        else if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) CreatePhysicsBodyCircle(GetMousePosition(), GetRandomValue(10, 45), 10);
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) CreatePhysicsBodyPolygon(GetMousePosition(), (float)GetRandomValue(20, 80), GetRandomValue(3, 8), 10);
+        else if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) CreatePhysicsBodyCircle(GetMousePosition(), (float)GetRandomValue(10, 45), 10);
 
         // Destroy falling physics bodies
         int bodiesCount = GetPhysicsBodiesCount();

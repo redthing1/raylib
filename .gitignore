@@ -48,6 +48,7 @@ ipch/
 *.db
 *.opendb
 packages/
+!examples/models/resources/models/obj/
 
 # Ignore compiled binaries
 *.o
@@ -55,19 +56,13 @@ packages/
 *.a
 *.bc
 *.so
+*.so.*
 
-# Ignore all examples files
-examples/*
-# Unignore all examples dirs
-!examples/*/
-# Unignore all examples files with extension
-!examples/*.c
-!examples/*.png
-# Unignore examples Makefile
-!examples/Makefile
-!examples/Makefile.Android
-!examples/raylib_compile_execute.bat
-!examples/raylib_makefile_example.bat
+# Ignore wasm data in examples/
+examples/**/*.wasm
+examples/**/*.data
+examples/**/*.js
+examples/**/*.html
 
 # Ignore files build by xcode
 *.mode*v*
@@ -85,7 +80,7 @@ DerivedData/
 
 # Jetbrains project
 .idea/
-cmake-build-debug/
+cmake-build-*/
 
 # CMake stuff
 CMakeCache.txt
@@ -98,10 +93,14 @@ compile_commands.json
 CTestTestfile.cmake
 build
 
-# Unignore These makefiles...
-!examples/CMakeLists.txt
-
 # Ignore GNU global tags
 GPATH
 GRTAGS
 GTAGS
+
+# Zig programming language
+zig-cache/
+zig-out/
+build/
+build-*/
+docgen_tmp/

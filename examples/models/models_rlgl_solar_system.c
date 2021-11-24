@@ -14,6 +14,8 @@
 #include "raylib.h"
 #include "rlgl.h"
 
+#include <math.h>           // Required for: cosf(), sinf()
+
 //------------------------------------------------------------------------------------
 // Module Functions Declaration
 //------------------------------------------------------------------------------------
@@ -43,7 +45,7 @@ int main(void)
     camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
     camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
     camera.fovy = 45.0f;
-    camera.type = CAMERA_PERSPECTIVE;
+    camera.projection = CAMERA_PERSPECTIVE;
 
     SetCameraMode(camera, CAMERA_FREE);
 
@@ -86,7 +88,6 @@ int main(void)
                 rlPushMatrix();
                     rlRotatef(earthOrbitRotation, 0.0f, 1.0f, 0.0f);    // Rotation for Earth orbit around Sun
                     rlTranslatef(earthOrbitRadius, 0.0f, 0.0f);         // Translation for Earth orbit
-                    rlRotatef(-earthOrbitRotation, 0.0f, 1.0f, 0.0f);   // Rotation for Earth orbit around Sun inverted
 
                     rlPushMatrix();
                         rlRotatef(earthRotation, 0.25, 1.0, 0.0);       // Rotation for Earth itself
@@ -97,7 +98,6 @@ int main(void)
 
                     rlRotatef(moonOrbitRotation, 0.0f, 1.0f, 0.0f);     // Rotation for Moon orbit around Earth
                     rlTranslatef(moonOrbitRadius, 0.0f, 0.0f);          // Translation for Moon orbit
-                    rlRotatef(-moonOrbitRotation, 0.0f, 1.0f, 0.0f);    // Rotation for Moon orbit around Earth inverted
                     rlRotatef(moonRotation, 0.0f, 1.0f, 0.0f);          // Rotation for Moon itself
                     rlScalef(moonRadius, moonRadius, moonRadius);       // Scale Moon
 
@@ -135,6 +135,10 @@ void DrawSphereBasic(Color color)
 {
     int rings = 16;
     int slices = 16;
+
+    // Make sure there is enough space in the internal render batch
+    // buffer to store all required vertex, batch is reseted if required
+    rlCheckRenderBatchLimit((rings + 2)*slices*6);
 
     rlBegin(RL_TRIANGLES);
         rlColor4ub(color.r, color.g, color.b, color.a);

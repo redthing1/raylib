@@ -1,25 +1,20 @@
 /*******************************************************************************************
 *
-*   Physac - Physics restitution
+*   raylib [physac] example - physics restitution
 *
-*   NOTE 1: Physac requires multi-threading, when InitPhysics() a second thread is created to manage physics calculations.
-*   NOTE 2: Physac requires static C library linkage to avoid dependency on MinGW DLL (-static -lpthread)
+*   This example has been created using raylib 1.5 (www.raylib.com)
+*   raylib is licensed under an unmodified zlib/libpng license (View raylib.h for details)
 *
-*   Use the following line to compile:
+*   This example uses physac 1.1 (https://github.com/raysan5/raylib/blob/master/src/physac.h)
 *
-*   gcc -o $(NAME_PART).exe $(FILE_NAME) -s -static  /
-*       -lraylib -lpthread -lglfw3 -lopengl32 -lgdi32 -lopenal32 -lwinmm /
-*       -std=c99 -Wl,--subsystem,windows -Wl,-allow-multiple-definition
-*
-*   Copyright (c) 2016-2018 Victor Fisac
+*   Copyright (c) 2016-2021 Victor Fisac (@victorfisac) and Ramon Santamaria (@raysan5)
 *
 ********************************************************************************************/
 
 #include "raylib.h"
 
 #define PHYSAC_IMPLEMENTATION
-#define PHYSAC_NO_THREADS
-#include "physac.h"
+#include "extras/physac.h"
 
 int main(void)
 {
@@ -29,7 +24,7 @@ int main(void)
     const int screenHeight = 450;
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);
-    InitWindow(screenWidth, screenHeight, "Physac [raylib] - Physics restitution");
+    InitWindow(screenWidth, screenHeight, "raylib [physac] example - physics restitution");
 
     // Physac logo drawing position
     int logoX = screenWidth - MeasureText("Physac", 30) - 10;
@@ -39,21 +34,21 @@ int main(void)
     InitPhysics();
 
     // Create floor rectangle physics body
-    PhysicsBody floor = CreatePhysicsBodyRectangle((Vector2){ screenWidth/2, screenHeight }, screenWidth, 100, 10);
+    PhysicsBody floor = CreatePhysicsBodyRectangle((Vector2){ screenWidth/2.0f, (float)screenHeight }, (float)screenWidth, 100, 10);
     floor->enabled = false; // Disable body state to convert it to static (no dynamics, but collisions)
     floor->restitution = 1;
 
     // Create circles physics body
-    PhysicsBody circleA = CreatePhysicsBodyCircle((Vector2){ screenWidth*0.25f, screenHeight/2 }, 30, 10);
+    PhysicsBody circleA = CreatePhysicsBodyCircle((Vector2){ screenWidth*0.25f, screenHeight/2.0f }, 30, 10);
     circleA->restitution = 0;
-    PhysicsBody circleB = CreatePhysicsBodyCircle((Vector2){ screenWidth*0.5f, screenHeight/2 }, 30, 10);
+    PhysicsBody circleB = CreatePhysicsBodyCircle((Vector2){ screenWidth*0.5f, screenHeight/2.0f }, 30, 10);
     circleB->restitution = 0.5f;
-    PhysicsBody circleC = CreatePhysicsBodyCircle((Vector2){ screenWidth*0.75f, screenHeight/2 }, 30, 10);
+    PhysicsBody circleC = CreatePhysicsBodyCircle((Vector2){ screenWidth*0.75f, screenHeight/2.0f }, 30, 10);
     circleC->restitution = 1;
 
     // Restitution demo needs a very tiny physics time step for a proper simulation
     SetPhysicsTimeStep(1.0/60.0/100*1000);
-    
+
     SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
 
@@ -62,16 +57,16 @@ int main(void)
     {
         // Update
         //----------------------------------------------------------------------------------
-        RunPhysicsStep();
+        UpdatePhysics();            // Update physics system
 
-        if (IsKeyPressed('R'))    // Reset physics input
+        if (IsKeyPressed(KEY_R))    // Reset physics input
         {
             // Reset circles physics bodies position and velocity
-            circleA->position = (Vector2){ screenWidth*0.25f, screenHeight/2 };
+            circleA->position = (Vector2){ screenWidth*0.25f, screenHeight/2.0f };
             circleA->velocity = (Vector2){ 0, 0 };
-            circleB->position = (Vector2){ screenWidth*0.5f, screenHeight/2 };
+            circleB->position = (Vector2){ screenWidth*0.5f, screenHeight/2.0f };
             circleB->velocity = (Vector2){ 0, 0 };
-            circleC->position = (Vector2){ screenWidth*0.75f, screenHeight/2 };
+            circleC->position = (Vector2){ screenWidth*0.75f, screenHeight/2.0f };
             circleC->velocity = (Vector2){ 0, 0 };
         }
         //----------------------------------------------------------------------------------
@@ -105,9 +100,9 @@ int main(void)
             }
 
             DrawText("Restitution amount", (screenWidth - MeasureText("Restitution amount", 30))/2, 75, 30, WHITE);
-            DrawText("0", circleA->position.x - MeasureText("0", 20)/2, circleA->position.y - 7, 20, WHITE);
-            DrawText("0.5", circleB->position.x - MeasureText("0.5", 20)/2, circleB->position.y - 7, 20, WHITE);
-            DrawText("1", circleC->position.x - MeasureText("1", 20)/2, circleC->position.y - 7, 20, WHITE);
+            DrawText("0", (int)circleA->position.x - MeasureText("0", 20)/2, circleA->position.y - 7, 20, WHITE);
+            DrawText("0.5", (int)circleB->position.x - MeasureText("0.5", 20)/2, circleB->position.y - 7, 20, WHITE);
+            DrawText("1", (int)circleC->position.x - MeasureText("1", 20)/2, circleC->position.y - 7, 20, WHITE);
 
             DrawText("Press 'R' to reset example", 10, 10, 10, WHITE);
 
@@ -124,6 +119,7 @@ int main(void)
     DestroyPhysicsBody(circleB);
     DestroyPhysicsBody(circleC);
     DestroyPhysicsBody(floor);
+
     ClosePhysics();       // Unitialize physics
 
     CloseWindow();        // Close window and OpenGL context
