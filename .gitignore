@@ -2,6 +2,7 @@
 # ...
 
 src/raygui.c
+src/physac.c
 libraylib.so.*
 
 # Ignore VIM's backup generated files
