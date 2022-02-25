@@ -22,18 +22,19 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        compiler: [mingw-w64, msvc16]
+        # compiler: [mingw-w64, msvc16]
+        compiler: [msvc16]
         bits: [64]
-        include:
-        - compiler: mingw-w64
-          bits: 64
-          ARCH: "x86_64"
-          COMPILER_PATH: "C:\\msys64\\mingw64\\bin"
-          WINDRES_ARCH: pe-x86-64
-        - compiler: msvc16
-          bits: 64
-          ARCH: "x64" 
-          VSARCHPATH: "x64"
+        # include:
+        # - compiler: mingw-w64
+        #   bits: 64
+        #   ARCH: "x86_64"
+        #   COMPILER_PATH: "C:\\msys64\\mingw64\\bin"
+        #   WINDRES_ARCH: pe-x86-64
+        # - compiler: msvc16
+        #   bits: 64
+        #   ARCH: "x64" 
+        #   VSARCHPATH: "x64"
 
     env:
       RELEASE_NAME: raylib-dev_win${{ matrix.bits }}_${{ matrix.compiler }}
