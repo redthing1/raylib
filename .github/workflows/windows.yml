@@ -1,5 +1,7 @@
 name: Windows
 
+# make windows builds of raylib
+
 on:
   workflow_dispatch:
   push:
