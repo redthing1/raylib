@@ -310,6 +310,7 @@
     <ClCompile Include="..\..\..\src\rtext.c" />
     <ClCompile Include="..\..\..\src\rtextures.c" />
     <ClCompile Include="..\..\..\src\utils.c" />
+    <ClCompile Include="..\..\..\src\raygui.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\external\cgltf.h" />
