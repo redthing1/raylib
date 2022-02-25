@@ -82,7 +82,7 @@ jobs:
       run: |
         cd projects/VS2019
         echo "#define RAYGUI_IMPLEMENTATION" > src/raygui.c
-	      echo "#include \"$(RAYLIB_MODULE_RAYGUI_PATH)/raygui.h\"" >> src/raygui.c
+        echo "#include \"$(RAYLIB_MODULE_RAYGUI_PATH)/raygui.h\"" >> src/raygui.c
         msbuild.exe raylib.sln /target:raylib /property:Configuration=Release /property:Platform=${{ matrix.ARCH }}
         copy /Y .\build\raylib\bin\${{ matrix.VSARCHPATH }}\Release\raylib.lib .\..\..\build\${{ env.RELEASE_NAME }}\lib\raylib.lib
         msbuild.exe raylib.sln /target:raylib /property:Configuration=Release.DLL /property:Platform=${{ matrix.ARCH }}
