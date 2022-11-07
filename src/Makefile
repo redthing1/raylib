@@ -78,8 +78,8 @@ RAYLIB_CONFIG_FLAGS  ?= NONE
 # NOTE: Some programs like tools could not require those modules
 RAYLIB_MODULE_AUDIO  ?= TRUE
 RAYLIB_MODULE_MODELS ?= TRUE
-RAYLIB_MODULE_RAYGUI ?= FALSE
-RAYLIB_MODULE_PHYSAC ?= FALSE
+RAYLIB_MODULE_RAYGUI ?= TRUE
+RAYLIB_MODULE_PHYSAC ?= TRUE
 
 # NOTE: Additional libraries have been moved to their own repos:
 # raygui: https://github.com/raysan5/raygui
