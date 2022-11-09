@@ -100,9 +100,10 @@
 #endif
 
 #include "raymath.h"            // Required for: Vector3, Matrix
-#define bool openvr_bool
+// #define bool openvr_bool
+#include <stdbool.h>
 #include <openvr_capi.h>
-#undef bool
+// #undef bool
 
 // Security check in case no GRAPHICS_API_OPENGL_* defined
 #if !defined(GRAPHICS_API_OPENGL_11) && \
