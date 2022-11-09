@@ -84,8 +84,8 @@ RAYLIB_MODULE_PHYSAC ?= TRUE
 # NOTE: Additional libraries have been moved to their own repos:
 # raygui: https://github.com/raysan5/raygui
 # physac: https://github.com/raysan5/physac
-RAYLIB_MODULE_RAYGUI_PATH ?= $(RAYLIB_SRC_PATH)/../../raygui/src
-RAYLIB_MODULE_PHYSAC_PATH ?= $(RAYLIB_SRC_PATH)/../../physac/src
+RAYLIB_MODULE_RAYGUI_PATH ?= $(RAYLIB_SRC_PATH)/../raygui/src
+RAYLIB_MODULE_PHYSAC_PATH ?= $(RAYLIB_SRC_PATH)/../physac/src
 
 # Use external GLFW library instead of rglfw module
 USE_EXTERNAL_GLFW     ?= FALSE
