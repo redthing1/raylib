@@ -89,7 +89,7 @@ jobs:
     - name: Build Library (MSVC16)
       run: |
         echo #define RAYGUI_IMPLEMENTATION > src/raygui.c
-        echo #include "../raygui/raygui.h" >> src/raygui.c
+        echo #include "../raygui/src/raygui.h" >> src/raygui.c
         cd projects/VS2022
         msbuild.exe raylib.sln /target:raylib /property:Configuration=Release /property:Platform=${{ matrix.ARCH }}
         copy /Y .\build\raylib\bin\${{ matrix.VSARCHPATH }}\Release\raylib.lib .\..\..\build\${{ env.RELEASE_NAME }}\lib\raylib.lib
