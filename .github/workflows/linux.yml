@@ -42,8 +42,10 @@ jobs:
       RELEASE_NAME: raylib-dev_linux_${{ matrix.ARCH_NAME }}
     
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@master
+      with:
+        submodules: recursive
     
     - name: Setup Release Version
       run: |
