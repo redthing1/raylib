@@ -1,3 +1,6 @@
+# Ignore the raygui.c we generate at build time
+src/raygui.c
+
 # Ignore generated files
 # ...
 
