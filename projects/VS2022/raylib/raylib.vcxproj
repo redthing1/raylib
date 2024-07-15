@@ -306,6 +306,7 @@
     <ClCompile Include="..\..\..\src\rcore.c" />
     <ClCompile Include="..\..\..\src\rmodels.c" />
     <ClCompile Include="..\..\..\src\rglfw.c" />
+    <ClCompile Include="..\..\..\src\raygui.c" />
     <ClCompile Include="..\..\..\src\rshapes.c" />
     <ClCompile Include="..\..\..\src\rtext.c" />
     <ClCompile Include="..\..\..\src\rtextures.c" />
@@ -329,6 +330,7 @@
     <ClInclude Include="..\..\..\src\raylib.h" />
     <ClInclude Include="..\..\..\src\raymath.h" />
     <ClInclude Include="..\..\..\src\rlgl.h" />
+    <ClInclude Include="..\..\..\src\raygui.h" />
     <ClInclude Include="..\..\..\src\utils.h" />
   </ItemGroup>
   <ItemGroup>
